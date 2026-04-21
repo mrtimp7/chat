@@ -12,7 +12,6 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 db = SQLAlchemy(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Çevrimiçi kullanıcı takibi
 online_users = {}
 
 class User(db.Model):
@@ -27,7 +26,7 @@ class Message(db.Model):
     avatar = db.Column(db.String(500))
     content = db.Column(db.Text)
     caption = db.Column(db.Text)
-    msg_type = db.Column(db.String(10)) # text, image, video
+    msg_type = db.Column(db.String(10))
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
@@ -38,7 +37,6 @@ def index():
     if 'username' in session:
         user = User.query.filter_by(username=session['username']).first()
         if not user: return redirect(url_for('logout'))
-        # 14 günlük temizlik
         limit = datetime.utcnow() - timedelta(days=14)
         Message.query.filter(Message.timestamp < limit).delete()
         db.session.commit()
@@ -89,7 +87,6 @@ def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
 
-# --- SocketIO Olayları ---
 @socketio.on('connect')
 def handle_connect():
     if 'username' in session:
@@ -110,19 +107,20 @@ def handle_typing(data):
 @socketio.on('message')
 def handle_message(data):
     user = User.query.filter_by(username=session.get('username')).first()
-    new_msg = Message(
-        user=user.username.capitalize(),
-        avatar=user.avatar,
-        content=data['content'],
-        caption=data.get('caption', ''),
-        msg_type=data['type']
-    )
-    db.session.add(new_msg)
-    db.session.commit()
-    emit('message', {
-        'id': new_msg.id, 'user': new_msg.user, 'content': new_msg.content,
-        'caption': new_msg.caption, 'avatar': new_msg.avatar, 'type': new_msg.msg_type
-    }, broadcast=True)
+    if user:
+        new_msg = Message(
+            user=user.username.capitalize(),
+            avatar=user.avatar,
+            content=data['content'],
+            caption=data.get('caption', ''),
+            msg_type=data.get('type', 'text')
+        )
+        db.session.add(new_msg)
+        db.session.commit()
+        emit('message', {
+            'id': new_msg.id, 'user': new_msg.user, 'content': new_msg.content,
+            'caption': new_msg.caption, 'avatar': new_msg.avatar, 'type': new_msg.msg_type
+        }, broadcast=True)
 
 @socketio.on('delete_message')
 def handle_delete(data):
