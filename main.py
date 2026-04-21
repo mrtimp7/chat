@@ -10,7 +10,9 @@ app.config['SECRET_KEY'] = 'besiktas_feda_1903'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///chat.db'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 db = SQLAlchemy(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Video gönderimi için buffer boyutunu 100MB'a çıkardık
+socketio = SocketIO(app, cors_allowed_origins="*", max_http_buffer_size=100 * 1024 * 1024)
 
 online_users = {}
 
@@ -26,8 +28,8 @@ class Message(db.Model):
     avatar = db.Column(db.String(500))
     content = db.Column(db.Text)
     caption = db.Column(db.Text)
-    msg_type = db.Column(db.String(10)) # text, image, video
-    reply_to = db.Column(db.Text) # "User: Mesaj" formatında
+    msg_type = db.Column(db.String(10)) 
+    reply_to = db.Column(db.Text) 
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
@@ -38,7 +40,6 @@ def index():
     if 'username' in session:
         user = User.query.filter_by(username=session['username']).first()
         if not user: return redirect(url_for('logout'))
-        # 14 günlük temizlik
         limit = datetime.utcnow() - timedelta(days=14)
         Message.query.filter(Message.timestamp < limit).delete()
         db.session.commit()
@@ -72,7 +73,7 @@ def login():
 def update_profile():
     if 'username' not in session: return redirect(url_for('login'))
     user = User.query.filter_by(username=session['username']).first()
-    new_username = request.form.get('username').strip().lower()
+    new_username = request.form.get('username', '').strip().lower()
     new_password = request.form.get('password')
     new_avatar = request.form.get('avatar_url')
     if new_username and new_username != user.username:
@@ -93,8 +94,9 @@ def logout():
 def handle_connect():
     if 'username' in session:
         user = User.query.filter_by(username=session['username']).first()
-        online_users[user.username] = {"avatar": user.avatar, "name": user.username.capitalize()}
-        emit('update_users', online_users, broadcast=True)
+        if user:
+            online_users[user.username] = {"avatar": user.avatar, "name": user.username.capitalize()}
+            emit('update_users', online_users, broadcast=True)
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -104,7 +106,7 @@ def handle_disconnect():
 
 @socketio.on('typing')
 def handle_typing(data):
-    emit('display_typing', {'user': session.get('username').capitalize(), 'status': data['status']}, broadcast=True, include_self=False)
+    emit('display_typing', {'user': session.get('username', '').capitalize(), 'status': data['status']}, broadcast=True, include_self=False)
 
 @socketio.on('message')
 def handle_message(data):
