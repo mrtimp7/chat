@@ -45,6 +45,10 @@ def service_worker():
     response.headers['Cache-Control'] = 'no-cache'
     return response
 
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory('static/icons', 'icon-192.svg', mimetype='image/svg+xml')
+
 @app.route('/api/notification-icon')
 def notification_icon():
     return jsonify({
