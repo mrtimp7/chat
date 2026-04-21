@@ -35,6 +35,10 @@
         #myMessage { background: transparent; border: none; color: #fff; flex: 1; outline: none; padding: 10px 0; }
         #preview-area { display: none; background: #2b2d31; border: 1px solid #5865f2; border-radius: 8px 8px 0 0; padding: 10px; align-items: center; gap: 15px; }
         .prev-img { width: 60px; height: 60px; border-radius: 4px; object-fit: cover; }
+        .upload-meta { display:flex; flex-direction:column; gap:6px; min-width:0; flex:1; }
+        .upload-progress { width:100%; height:8px; background:#1e1f22; border-radius:999px; overflow:hidden; }
+        .upload-progress-bar { width:0%; height:100%; background:linear-gradient(90deg, #5865f2, #7a84ff); transition:width 0.15s ease; }
+        .upload-stats { font-size:12px; color:#b5bac1; }
         #lightbox { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; }
         #lightbox img, #lightbox video { max-width: 90%; max-height: 90%; border-radius: 8px; }
         .member-item { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
@@ -64,7 +68,7 @@
             <div class="chat-header"># genel-sohbet</div>
             <div id="messages">
                 {% for m in old_messages %}
-                    <script>$(document).ready(function(){ renderMessage({id: {{m.id}}, user: "{{m.user}}", content: `{{m.content}}`, caption: `{{m.caption}}`, avatar: "{{m.avatar}}", type: "{{m.msg_type}}", reply_to: `{{m.reply_to}}`}); });</script>
+                    <script>$(document).ready(function(){ renderMessage({id: {{ m.id }}, user: {{ m.user|tojson }}, content: {{ m.content|tojson }}, caption: {{ m.caption|tojson }}, avatar: {{ m.avatar|tojson }}, type: {{ m.msg_type|tojson }}, reply_to: {{ m.reply_to|tojson }} }); });</script>
                 {% endfor %}
             </div>
             <div class="input-section">
@@ -75,7 +79,13 @@
                 </div>
                 <div id="preview-area">
                     <img id="prev-box" class="prev-img">
-                    <div id="prev-name" style="font-size:12px; color:#fff;"></div>
+                    <div class="upload-meta">
+                        <div id="prev-name" style="font-size:12px; color:#fff;"></div>
+                        <div id="upload-stats" class="upload-stats"></div>
+                        <div class="upload-progress">
+                            <div id="upload-progress-bar" class="upload-progress-bar"></div>
+                        </div>
+                    </div>
                     <button onclick="cancelFile()" style="background:none; border:none; color:#f04747; cursor:pointer;">Vazgeç</button>
                 </div>
                 <div class="input-wrapper">
@@ -113,6 +123,39 @@
         var notificationBatch = [];
         var notificationTimer = null;
         var notificationWindowMs = 3500;
+        var uploadPercent = 0;
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes && bytes !== 0) return '';
+            if (bytes < 1024 * 1024) {
+                return (bytes / 1024).toFixed(1) + ' KB';
+            }
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        function shortenText(text, limit) {
+            let clean = String(text || '').replace(/\s+/g, ' ').trim();
+            return clean.length > limit ? clean.slice(0, limit) + '...' : clean;
+        }
+
+        function updateUploadStatus(percent, file) {
+            uploadPercent = percent;
+            $('#upload-progress-bar').css('width', percent + '%');
+            if (file) {
+                $('#upload-stats').text(formatFileSize(file.size) + ' • ' + percent + '% yuklendi');
+            } else {
+                $('#upload-stats').text(percent + '% yuklendi');
+            }
+        }
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js');
@@ -268,13 +311,15 @@
         function handleFileSelection(file) {
             selectedFile = file;
             $('#preview-area').css('display', 'flex');
+            $('#upload-progress-bar').css('width', '0%');
             if(file.type.startsWith('image/')) {
                 $('#prev-box').attr('src', URL.createObjectURL(file)).show();
-                $('#prev-name').text('');
+                $('#prev-name').text(file.name || 'Gorsel secildi');
             } else {
                 $('#prev-box').hide();
                 $('#prev-name').text("Video: " + file.name);
             }
+            updateUploadStatus(0, file);
             $('#myMessage').focus();
         }
 
@@ -286,22 +331,26 @@
         function renderMessage(data) {
             let isMe = data.user.toLowerCase() === "{{ user.username.lower() }}";
             if(isMe) lastMyId = data.id;
-            let replyHtml = (data.reply_to && data.reply_to !== 'None') ? `<div class="reply-box">${data.reply_to}</div>` : '';
+            let replyHtml = (data.reply_to && data.reply_to !== 'None') ? `<div class="reply-box">${escapeHtml(data.reply_to)}</div>` : '';
             let media = '';
             if(data.type === 'image') {
-                media = `<img src="${data.content}" class="msg-media" onclick="zoomMedia(this)">`;
+                media = `<img src="${escapeHtml(data.content)}" class="msg-media" onclick="zoomMedia(this)">`;
             } else if(data.type === 'video') {
-                media = `<video class="msg-media" controls><source src="${data.content}">Tarayıcın desteklemiyor.</video>`;
+                media = `<video class="msg-media" controls><source src="${escapeHtml(data.content)}">Tarayıcın desteklemiyor.</video>`;
             }
-            let txt = data.type === 'text' ? `<div class="msg-text" id="t-${data.id}">${data.content}</div>` : `${media}<div style="font-size:14px; color:#b5bac1; margin-top:4px;">${data.caption}</div>`;
+            let safeContent = escapeHtml(data.content).replace(/\n/g, '<br>');
+            let safeCaption = escapeHtml(data.caption);
+            let safeUser = escapeHtml(data.user);
+            let previewText = escapeHtml(shortenText(data.type === 'text' ? data.content : (data.caption || data.type), 30));
+            let txt = data.type === 'text' ? `<div class="msg-text" id="t-${data.id}">${safeContent}</div>` : `${media}<div style="font-size:14px; color:#b5bac1; margin-top:4px;">${safeCaption}</div>`;
             let menu = `<div class="msg-actions">
-                <span class="action-btn" title="Yanıtla" onclick="setReply('${data.user}', '${data.content.substring(0,30)}')">💬</span>
+                <span class="action-btn" title="Yanıtla" onclick="setReply(this.dataset.user, this.dataset.preview)" data-user="${safeUser}" data-preview="${previewText}">💬</span>
                 ${isMe ? `<span class="action-btn" title="Düzenle" onclick="editMsg(${data.id})">✏️</span>` : ''}
                 ${isMe ? `<span class="action-btn" title="Sil" onclick="deleteMsg(event, ${data.id})">🗑️</span>` : ''}
             </div>`;
             $('#messages').append(`<div class="message-wrapper" id="msg-${data.id}">
-                <img src="${data.avatar}" class="avatar">
-                <div class="msg-content">${replyHtml}<div class="msg-user">${data.user}</div>${txt}</div>
+                <img src="${escapeHtml(data.avatar)}" class="avatar">
+                <div class="msg-content">${replyHtml}<div class="msg-user">${safeUser}</div>${txt}</div>
                 ${menu}
             </div>`);
             $("#messages").scrollTop($("#messages")[0].scrollHeight);
@@ -322,7 +371,13 @@
         }
         function deleteMsg(e, id) { if(e.shiftKey || confirm("Silinsin mi?")) socket.emit('delete_message', {id: id}); }
         function zoomMedia(el) { $('#lightbox').empty().append($(el).clone().removeAttr('onclick')).css('display', 'flex'); }
-        function cancelFile() { selectedFile = null; $('#preview-area').hide(); $('#file-in').val(''); }
+        function cancelFile() {
+            selectedFile = null;
+            $('#preview-area').hide();
+            $('#file-in').val('');
+            $('#upload-stats').text('');
+            $('#upload-progress-bar').css('width', '0%');
+        }
 
         $('#myMessage').on('keydown', function(e) {
             if(e.which == 13) {
@@ -330,7 +385,14 @@
                 let val = $(this).val();
                 if(selectedFile) {
                     let reader = new FileReader();
+                    reader.onprogress = ev => {
+                        if (ev.lengthComputable) {
+                            let percent = Math.round((ev.loaded / ev.total) * 100);
+                            updateUploadStatus(percent, selectedFile);
+                        }
+                    };
                     reader.onload = ev => {
+                        updateUploadStatus(100, selectedFile);
                         socket.emit('message', {
                             content: ev.target.result,
                             caption: val,
