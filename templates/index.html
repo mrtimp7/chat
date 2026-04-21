@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mertcord</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#5865f2">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #313338; color: #dbdee1; overflow: hidden; }
+        .app-container { display: flex; height: 100vh; }
+        .sidebar { width: 240px; background-color: #2b2d31; display: flex; flex-direction: column; flex-shrink: 0; }
+        .member-list { width: 240px; background-color: #2b2d31; flex-shrink: 0; padding: 15px; border-left: 1px solid #1f2124; overflow-y: auto; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
+        .chat-header { height: 48px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid #1f2124; font-weight: bold; color: white; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; }
+        .message-wrapper { display: flex; margin-bottom: 15px; position: relative; padding: 5px; border-radius: 4px; }
+        .message-wrapper:hover { background: rgba(0,0,0,0.05); }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; flex-shrink: 0; object-fit: cover; }
+        .msg-user { color: #ffffff; font-weight: 600; font-size: 1rem; }
+        .msg-text { color: #dbdee1; word-wrap: break-word; white-space: pre-wrap; }
+        .msg-media { max-width: 400px; max-height: 300px; border-radius: 8px; margin: 5px 0; cursor: pointer; border: 1px solid #232428; }
+        .reply-box { background: rgba(255,255,255,0.05); border-left: 2px solid #5865f2; padding: 3px 10px; margin-bottom: 5px; font-size: 12px; border-radius: 4px; color: #b5bac1; }
+        .msg-actions { display: none; position: absolute; right: 10px; top: 5px; background: #2b2d31; border: 1px solid #1f2124; padding: 4px; border-radius: 4px; z-index: 5; }
+        .message-wrapper:hover .msg-actions { display: flex; gap: 8px; }
+        .action-btn { cursor: pointer; opacity: 0.7; transition: 0.2s; font-size: 14px; }
+        .action-btn:hover { opacity: 1; color: white; }
+        .input-section { padding: 0 20px 20px 20px; }
+        .typing-info { font-size: 12px; color: #b5bac1; height: 20px; margin-bottom: 4px; }
+        .reply-active-bar { background: #2b2d31; padding: 8px 15px; border-radius: 8px 8px 0 0; border: 1px solid #5865f2; display: none; justify-content: space-between; align-items: center; font-size: 12px; }
+        .input-wrapper { background: #383a40; border-radius: 8px; display: flex; align-items: center; padding: 0 15px; min-height: 44px; }
+        .plus-btn { font-size: 24px; color: #b5bac1; cursor: pointer; margin-right: 15px; }
+        #myMessage { background: transparent; border: none; color: #fff; flex: 1; outline: none; padding: 10px 0; }
+        #preview-area { display: none; background: #2b2d31; border: 1px solid #5865f2; border-radius: 8px 8px 0 0; padding: 10px; align-items: center; gap: 15px; }
+        .prev-img { width: 60px; height: 60px; border-radius: 4px; object-fit: cover; }
+        #lightbox { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; }
+        #lightbox img, #lightbox video { max-width: 90%; max-height: 90%; border-radius: 8px; }
+        .member-item { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .status-online { width: 10px; height: 10px; background: #23a55a; border-radius: 50%; }
+        #settingsModal { display:none; position:fixed; z-index:900; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8); }
+        .modal-content { background:#313338; margin:10% auto; padding:25px; border-radius:8px; width:300px; color:white; }
+        .modal-content input { width:100%; padding:10px; margin: 10px 0; background:#1e1f22; border:none; color:white; border-radius:4px; box-sizing: border-box; }
+        .utility-btn { background:#5865f2; color:#fff; border:none; border-radius:6px; padding:8px 10px; margin:10px; cursor:pointer; font-size:12px; }
+        .utility-btn.secondary { background:#4e5058; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="chat-header">Mertcord</div>
+            <div style="padding:10px; font-size:14px; color:#fff; background:#3f4147; margin:10px; border-radius:4px;"># genel-sohbet</div>
+            <button id="notify-btn" class="utility-btn">Bildirimleri Ac</button>
+            <button id="install-btn" class="utility-btn secondary" style="display:none;">PC Uygulamasi Olarak Yukle</button>
+            <div style="margin-top:auto; padding:10px; background:#232428; display:flex; align-items:center; gap:10px;">
+                <img src="{{ user.avatar }}" style="width:32px; height:32px; border-radius:50%;">
+                <span style="font-weight:bold; flex:1; font-size:13px;">{{ user.username.capitalize() }}</span>
+                <span style="cursor:pointer;" onclick="$('#settingsModal').show()">⚙️</span>
+                <a href="/logout" style="text-decoration:none;">❌</a>
+            </div>
+        </div>
+        <div class="chat-area">
+            <div class="chat-header"># genel-sohbet</div>
+            <div id="messages">
+                {% for m in old_messages %}
+                    <script>$(document).ready(function(){ renderMessage({id: {{m.id}}, user: "{{m.user}}", content: `{{m.content}}`, caption: `{{m.caption}}`, avatar: "{{m.avatar}}", type: "{{m.msg_type}}", reply_to: `{{m.reply_to}}`}); });</script>
+                {% endfor %}
+            </div>
+            <div class="input-section">
+                <div class="typing-info" id="typing-box"></div>
+                <div id="reply-bar" class="reply-active-bar">
+                    <span id="reply-text"></span>
+                    <span onclick="cancelReply()" style="cursor:pointer;">✖</span>
+                </div>
+                <div id="preview-area">
+                    <img id="prev-box" class="prev-img">
+                    <div id="prev-name" style="font-size:12px; color:#fff;"></div>
+                    <button onclick="cancelFile()" style="background:none; border:none; color:#f04747; cursor:pointer;">Vazgeç</button>
+                </div>
+                <div class="input-wrapper">
+                    <label class="plus-btn" for="file-in">+</label>
+                    <input type="file" id="file-in" style="display:none;" accept="image/*,video/*">
+                    <input id="myMessage" type="text" placeholder="Mesaj gönder..." autocomplete="off">
+                </div>
+            </div>
+        </div>
+        <div class="member-list" id="member-list">
+            <div style="font-size:12px; font-weight:bold; color:#949ba4; margin-bottom:15px;">ÇEVRİMİÇİ ÜYELER</div>
+        </div>
+    </div>
+    <div id="lightbox" onclick="$(this).hide().empty()"></div>
+    <div id="settingsModal">
+        <div class="modal-content">
+            <h3>Ayarlar</h3>
+            <form action="/update_profile" method="POST">
+                <input type="text" name="username" value="{{ user.username }}">
+                <input type="password" name="password" placeholder="Yeni Şifre">
+                <input type="text" name="avatar_url" value="{{ user.avatar }}">
+                <button type="submit" style="width:100%; background:#5865f2; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer;">Kaydet</button>
+                <button type="button" onclick="$('#settingsModal').hide()" style="width:100%; background:transparent; border:none; color:#fff; margin-top:5px; cursor:pointer;">İptal</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        var socket = io();
+        var selectedFile = null;
+        var currentReply = null;
+        var typingTimer;
+        var lastMyId = null;
+        var notificationIcon = "/static/icons/icon-192.svg";
+        var deferredInstallPrompt = null;
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js');
+        }
+
+        fetch('/api/notification-icon')
+            .then(res => res.json())
+            .then(data => {
+                if (data.icon) notificationIcon = data.icon;
+            })
+            .catch(() => {});
+
+        window.addEventListener('beforeinstallprompt', function(e) {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            $('#install-btn').show();
+        });
+
+        $('#install-btn').on('click', async function() {
+            if (!deferredInstallPrompt) return;
+            deferredInstallPrompt.prompt();
+            await deferredInstallPrompt.userChoice;
+            deferredInstallPrompt = null;
+            $('#install-btn').hide();
+        });
+
+        async function requestDesktopNotifications() {
+            if (!('Notification' in window)) {
+                alert('Bu tarayici masaustu bildirimi desteklemiyor.');
+                return;
+            }
+
+            let permission = Notification.permission;
+            if (permission !== 'granted') {
+                permission = await Notification.requestPermission();
+            }
+
+            if (permission === 'granted') {
+                $('#notify-btn').text('Bildirimler Acik');
+            }
+        }
+
+        async function showDesktopNotification(data) {
+            if (!('Notification' in window) || Notification.permission !== 'granted') return;
+            if (document.visibilityState === 'visible' && document.hasFocus()) return;
+            if (data.user.toLowerCase() === "{{ user.username.lower() }}") return;
+
+            let body = data.type === 'text'
+                ? data.content
+                : (data.caption || (data.type === 'image' ? 'Bir fotograf gonderdi.' : 'Bir video gonderdi.'));
+
+            try {
+                let registration = await navigator.serviceWorker.getRegistration();
+                if (registration && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'SHOW_NOTIFICATION',
+                        payload: {
+                            title: data.user + ' yeni mesaj gonderdi',
+                            body: body,
+                            icon: notificationIcon,
+                            tag: 'msg-' + data.id
+                        }
+                    });
+                    return;
+                }
+            } catch (e) {}
+
+            let notification = new Notification(data.user + ' yeni mesaj gonderdi', {
+                body: body,
+                icon: notificationIcon,
+                tag: 'msg-' + data.id
+            });
+
+            notification.onclick = function() {
+                window.focus();
+                notification.close();
+            };
+        }
+
+        $('#notify-btn').on('click', requestDesktopNotifications);
+
+        document.onpaste = function(e) {
+            let items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image/') !== -1 || items[i].type.indexOf('video/') !== -1) {
+                    let file = items[i].getAsFile();
+                    if (file) {
+                        handleFileSelection(file);
+                    }
+                }
+            }
+        };
+
+        $(document).on('keydown', e => {
+            if(e.which == 38 && $('#myMessage').val() === "" && lastMyId) editMsg(lastMyId);
+        });
+
+        function handleFileSelection(file) {
+            selectedFile = file;
+            $('#preview-area').css('display', 'flex');
+            if(file.type.startsWith('image/')) {
+                $('#prev-box').attr('src', URL.createObjectURL(file)).show();
+                $('#prev-name').text('');
+            } else {
+                $('#prev-box').hide();
+                $('#prev-name').text("Video: " + file.name);
+            }
+            $('#myMessage').focus();
+        }
+
+        $('#file-in').on('change', function(e) {
+            let file = e.target.files[0];
+            if(file) handleFileSelection(file);
+        });
+
+        function renderMessage(data) {
+            let isMe = data.user.toLowerCase() === "{{ user.username.lower() }}";
+            if(isMe) lastMyId = data.id;
+            let replyHtml = (data.reply_to && data.reply_to !== 'None') ? `<div class="reply-box">${data.reply_to}</div>` : '';
+            let media = '';
+            if(data.type === 'image') {
+                media = `<img src="${data.content}" class="msg-media" onclick="zoomMedia(this)">`;
+            } else if(data.type === 'video') {
+                media = `<video class="msg-media" controls><source src="${data.content}">Tarayıcın desteklemiyor.</video>`;
+            }
+            let txt = data.type === 'text' ? `<div class="msg-text" id="t-${data.id}">${data.content}</div>` : `${media}<div style="font-size:14px; color:#b5bac1; margin-top:4px;">${data.caption}</div>`;
+            let menu = `<div class="msg-actions">
+                <span class="action-btn" title="Yanıtla" onclick="setReply('${data.user}', '${data.content.substring(0,30)}')">💬</span>
+                ${isMe ? `<span class="action-btn" title="Düzenle" onclick="editMsg(${data.id})">✏️</span>` : ''}
+                ${isMe ? `<span class="action-btn" title="Sil" onclick="deleteMsg(event, ${data.id})">🗑️</span>` : ''}
+            </div>`;
+            $('#messages').append(`<div class="message-wrapper" id="msg-${data.id}">
+                <img src="${data.avatar}" class="avatar">
+                <div class="msg-content">${replyHtml}<div class="msg-user">${data.user}</div>${txt}</div>
+                ${menu}
+            </div>`);
+            $("#messages").scrollTop($("#messages")[0].scrollHeight);
+        }
+
+        function setReply(user, text) {
+            currentReply = user + ": " + text.replace(/<[^>]*>?/gm, '');
+            $('#reply-text').text("Yanıt: " + currentReply);
+            $('#reply-bar').css('display', 'flex');
+            $('#myMessage').focus();
+        }
+
+        function cancelReply() { currentReply = null; $('#reply-bar').hide(); }
+        function editMsg(id) {
+            let old = $('#t-'+id).text();
+            let n = prompt("Düzenle:", old);
+            if(n && n !== old) socket.emit('edit_message', {id: id, content: n});
+        }
+        function deleteMsg(e, id) { if(e.shiftKey || confirm("Silinsin mi?")) socket.emit('delete_message', {id: id}); }
+        function zoomMedia(el) { $('#lightbox').empty().append($(el).clone().removeAttr('onclick')).css('display', 'flex'); }
+        function cancelFile() { selectedFile = null; $('#preview-area').hide(); $('#file-in').val(''); }
+
+        $('#myMessage').on('keydown', function(e) {
+            if(e.which == 13) {
+                e.preventDefault();
+                let val = $(this).val();
+                if(selectedFile) {
+                    let reader = new FileReader();
+                    reader.onload = ev => {
+                        socket.emit('message', {
+                            content: ev.target.result,
+                            caption: val,
+                            type: selectedFile.type.startsWith('image/') ? 'image' : 'video',
+                            reply_to: currentReply
+                        });
+                        cancelFile(); cancelReply(); $('#myMessage').val('');
+                    };
+                    reader.readAsDataURL(selectedFile);
+                } else if(val.trim() !== "") {
+                    socket.emit('message', {content: val, type: 'text', reply_to: currentReply});
+                    $(this).val(''); cancelReply();
+                }
+            } else {
+                socket.emit('typing', {status: true});
+                clearTimeout(typingTimer);
+                typingTimer = setTimeout(() => socket.emit('typing', {status: false}), 2000);
+            }
+        });
+
+        socket.on('message', data => {
+            renderMessage(data);
+            showDesktopNotification(data);
+        });
+        socket.on('message_edited', d => { $('#t-'+d.id).text(d.content); });
+        socket.on('message_deleted', d => $(`#msg-${d.id}`).remove());
+        socket.on('update_users', users => {
+            $('#member-list').html('<div style="font-size:12px; font-weight:bold; color:#949ba4; margin-bottom:15px;">ÇEVRİMİÇİ — '+Object.keys(users).length+'</div>');
+            for(let u in users) {
+                $('#member-list').append(`<div class="member-item"><img src="${users[u].avatar}" style="width:32px; height:32px; border-radius:50%;"><span style="flex:1; font-size:14px;">${users[u].name}</span><div class="status-online"></div></div>`);
+            }
+        });
+        socket.on('display_typing', d => { $('#typing-box').text(d.status ? d.user + ' yazıyor...' : ''); });
+        if ('Notification' in window && Notification.permission === 'granted') {
+            $('#notify-btn').text('Bildirimler Acik');
+        }
+    </script>
+</body>
+</html>
