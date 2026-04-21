@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session
 from flask_socketio import SocketIO, emit
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -12,7 +12,9 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 db = SQLAlchemy(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Modeller
+# Çevrimiçi kullanıcı takibi
+online_users = {}
+
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -24,7 +26,8 @@ class Message(db.Model):
     user = db.Column(db.String(50))
     avatar = db.Column(db.String(500))
     content = db.Column(db.Text)
-    msg_type = db.Column(db.String(10), default='text')
+    caption = db.Column(db.Text)
+    msg_type = db.Column(db.String(10)) # text, image, video
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
@@ -34,14 +37,11 @@ with app.app_context():
 def index():
     if 'username' in session:
         user = User.query.filter_by(username=session['username']).first()
-        if not user:
-            return redirect(url_for('logout'))
-        
+        if not user: return redirect(url_for('logout'))
         # 14 günlük temizlik
         limit = datetime.utcnow() - timedelta(days=14)
         Message.query.filter(Message.timestamp < limit).delete()
         db.session.commit()
-        
         old_messages = Message.query.order_by(Message.timestamp.asc()).all()
         return render_template('index.html', user=user, old_messages=old_messages)
     return redirect(url_for('login'))
@@ -52,7 +52,6 @@ def login():
         username = request.form['username'].strip().lower()
         password = request.form['password']
         avatar_url = request.form.get('avatar_url') or f"https://api.dicebear.com/7.x/bottts/svg?seed={username}"
-        
         user = User.query.filter_by(username=username).first()
         if user:
             if check_password_hash(user.password, password):
@@ -73,20 +72,15 @@ def login():
 def update_profile():
     if 'username' not in session: return redirect(url_for('login'))
     user = User.query.filter_by(username=session['username']).first()
-    
     new_username = request.form.get('username').strip().lower()
     new_password = request.form.get('password')
     new_avatar = request.form.get('avatar_url')
-
     if new_username and new_username != user.username:
         if not User.query.filter_by(username=new_username).first():
             user.username = new_username
             session['username'] = new_username
-    if new_password:
-        user.password = generate_password_hash(new_password)
-    if new_avatar:
-        user.avatar = new_avatar
-        
+    if new_password: user.password = generate_password_hash(new_password)
+    if new_avatar: user.avatar = new_avatar
     db.session.commit()
     return redirect(url_for('index'))
 
@@ -95,26 +89,48 @@ def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
 
+# --- SocketIO Olayları ---
+@socketio.on('connect')
+def handle_connect():
+    if 'username' in session:
+        user = User.query.filter_by(username=session['username']).first()
+        online_users[user.username] = {"avatar": user.avatar, "name": user.username.capitalize()}
+        emit('update_users', online_users, broadcast=True)
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    if 'username' in session:
+        online_users.pop(session['username'], None)
+        emit('update_users', online_users, broadcast=True)
+
+@socketio.on('typing')
+def handle_typing(data):
+    emit('display_typing', {'user': session.get('username').capitalize(), 'status': data['status']}, broadcast=True, include_self=False)
+
 @socketio.on('message')
-def handleMessage(data):
-    user_name = session.get('username')
-    if user_name:
-        user = User.query.filter_by(username=user_name).first()
-        if user:
-            new_msg = Message(
-                user=user.username.capitalize(), 
-                avatar=user.avatar, 
-                content=data['content'], 
-                msg_type=data.get('type', 'text')
-            )
-            db.session.add(new_msg)
-            db.session.commit()
-            emit('message', {
-                'user': new_msg.user, 
-                'content': new_msg.content, 
-                'avatar': new_msg.avatar, 
-                'type': new_msg.msg_type
-            }, broadcast=True)
+def handle_message(data):
+    user = User.query.filter_by(username=session.get('username')).first()
+    new_msg = Message(
+        user=user.username.capitalize(),
+        avatar=user.avatar,
+        content=data['content'],
+        caption=data.get('caption', ''),
+        msg_type=data['type']
+    )
+    db.session.add(new_msg)
+    db.session.commit()
+    emit('message', {
+        'id': new_msg.id, 'user': new_msg.user, 'content': new_msg.content,
+        'caption': new_msg.caption, 'avatar': new_msg.avatar, 'type': new_msg.msg_type
+    }, broadcast=True)
+
+@socketio.on('delete_message')
+def handle_delete(data):
+    msg = Message.query.get(data['id'])
+    if msg and msg.user.lower() == session.get('username').lower():
+        db.session.delete(msg)
+        db.session.commit()
+        emit('message_deleted', {'id': data['id']}, broadcast=True)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
