@@ -2,56 +2,50 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Chat</title>
+    <title>Mertcord</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #313338; color: #dbdee1; overflow: hidden; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #313338; color: #dbdee1; overflow: hidden; }
         .app-container { display: flex; height: 100vh; }
         
-        /* Sidebars */
+        /* Sidebar ve Üyeler */
         .sidebar { width: 240px; background-color: #2b2d31; display: flex; flex-direction: column; flex-shrink: 0; }
         .member-list { width: 240px; background-color: #2b2d31; flex-shrink: 0; padding: 15px; border-left: 1px solid #1f2124; overflow-y: auto; }
         
-        /* Chat Main */
+        /* Chat Alanı */
         .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
         .chat-header { height: 48px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid #1f2124; font-weight: bold; color: white; }
         #messages { flex: 1; overflow-y: auto; padding: 20px; }
 
-        /* Mesaj Tasarımı */
+        /* Mesaj Balonları */
         .message-wrapper { display: flex; margin-bottom: 15px; position: relative; padding: 5px; border-radius: 4px; }
         .message-wrapper:hover { background: rgba(0,0,0,0.05); }
         .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; flex-shrink: 0; object-fit: cover; }
-        .msg-content { display: flex; flex-direction: column; }
-        .msg-user { color: #ffffff; font-weight: 600; font-size: 1rem; }
-        .msg-text { color: #dbdee1; word-wrap: break-word; white-space: pre-wrap; }
+        .msg-user { color: #ffffff; font-weight: 600; }
         .msg-media { max-width: 400px; max-height: 300px; border-radius: 8px; margin: 5px 0; cursor: pointer; border: 1px solid #232428; }
 
-        /* Silme Butonu */
         .msg-actions { display: none; position: absolute; right: 10px; top: 5px; background: #2b2d31; border: 1px solid #1f2124; padding: 5px; border-radius: 4px; }
         .message-wrapper:hover .msg-actions { display: block; }
 
-        /* Input Area */
+        /* Yazma Alanı */
         .input-section { padding: 0 20px 20px 20px; }
-        .typing-info { font-size: 12px; color: #b5bac1; height: 20px; padding-left: 10px; margin-bottom: 5px; }
+        .typing-info { font-size: 12px; color: #b5bac1; height: 20px; margin-bottom: 5px; }
         .input-wrapper { background: #383a40; border-radius: 8px; display: flex; align-items: center; padding: 0 15px; min-height: 44px; }
-        .plus-btn { font-size: 24px; color: #b5bac1; cursor: pointer; margin-right: 15px; transition: 0.2s; }
-        .plus-btn:hover { color: #fff; }
-        #myMessage { background: transparent; border: none; color: #fff; flex: 1; outline: none; font-size: 1rem; }
+        .plus-btn { font-size: 24px; color: #b5bac1; cursor: pointer; margin-right: 15px; }
+        #myMessage { background: transparent; border: none; color: #fff; flex: 1; outline: none; padding: 10px 0; }
 
-        /* Media Preview */
+        /* Önizleme */
         #preview-area { display: none; background: #2b2d31; border: 1px solid #5865f2; border-radius: 8px 8px 0 0; padding: 10px; align-items: center; gap: 15px; }
         .prev-img { width: 60px; height: 60px; border-radius: 4px; object-fit: cover; }
 
-        /* Lightbox (Tam Ekran Bakma) */
+        /* Lightbox */
         #lightbox { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; }
-        #lightbox img, #lightbox video { max-width: 90%; max-height: 90%; border-radius: 8px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        #lightbox img, #lightbox video { max-width: 90%; max-height: 90%; border-radius: 8px; }
 
-        /* Member List */
         .member-item { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
         .status-online { width: 10px; height: 10px; background: #23a55a; border-radius: 50%; }
 
-        /* Settings Modal */
         #settingsModal { display:none; position:fixed; z-index:900; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8); }
         .modal-content { background:#313338; margin:10% auto; padding:25px; border-radius:8px; width:300px; color:white; }
         .modal-content input { width:100%; padding:10px; margin: 10px 0; background:#1e1f22; border:none; color:white; border-radius:4px; box-sizing: border-box; }
@@ -83,7 +77,7 @@
                 <div id="preview-area">
                     <img id="prev-box" class="prev-img">
                     <div id="prev-name" style="font-size:12px; color:#fff;"></div>
-                    <button onclick="cancelFile()" style="background:none; border:none; color:#f04747; cursor:pointer;">Kaldır</button>
+                    <button onclick="cancelFile()" style="background:none; border:none; color:#f04747; cursor:pointer; font-size:12px;">Vazgeç</button>
                 </div>
                 <div class="input-wrapper">
                     <label class="plus-btn" for="file-in">+</label>
@@ -94,7 +88,7 @@
         </div>
 
         <div class="member-list" id="member-list">
-            <div style="font-size:12px; font-weight:bold; color:#949ba4; margin-bottom:15px;">ÇEVRİMİÇİ — <span id="online-count">0</span></div>
+            <div style="font-size:12px; font-weight:bold; color:#949ba4; margin-bottom:15px;">ÇEVRİMİÇİ ÜYELER</div>
         </div>
     </div>
 
@@ -102,13 +96,13 @@
 
     <div id="settingsModal">
         <div class="modal-content">
-            <h3>Hesap Ayarları</h3>
+            <h3>Ayarlar</h3>
             <form action="/update_profile" method="POST">
                 <input type="text" name="username" value="{{ user.username }}">
                 <input type="password" name="password" placeholder="Yeni Şifre">
                 <input type="text" name="avatar_url" value="{{ user.avatar }}">
-                <button type="submit" style="width:100%; background:#5865f2; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer;">Güncelle</button>
-                <button type="button" onclick="$('#settingsModal').hide()" style="width:100%; background:transparent; border:none; color:#fff; margin-top:5px; cursor:pointer;">Kapat</button>
+                <button type="submit" style="width:100%; background:#5865f2; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer;">Kaydet</button>
+                <button type="button" onclick="$('#settingsModal').hide()" style="width:100%; background:transparent; border:none; color:#fff; margin-top:5px; cursor:pointer;">İptal</button>
             </form>
         </div>
     </div>
@@ -118,7 +112,26 @@
         var selectedFile = null;
         var typingTimer;
 
-        // Dosya Seçimi
+        // CTRL+V Yapıştırma
+        document.onpaste = function(e) {
+            let items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image/') !== -1) {
+                    let file = items[i].getAsFile();
+                    let reader = new FileReader();
+                    reader.onload = function(ev) {
+                        socket.emit('message', {
+                            content: ev.target.result,
+                            caption: "Yapıştırılan Resim",
+                            type: 'image'
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+        };
+
+        // Dosya Seçme (+)
         $('#file-in').on('change', function(e) {
             let file = e.target.files[0];
             if(file) {
@@ -145,7 +158,7 @@
             if(data.type === 'image') media = `<img src="${data.content}" class="msg-media" onclick="zoomMedia(this)">`;
             if(data.type === 'video') media = `<video src="${data.content}" class="msg-media" controls></video>`;
             
-            let txt = data.type === 'text' ? `<div class="msg-text">${data.content}</div>` : `${media}<div style="font-size:14px; margin-top:4px;">${data.caption}</div>`;
+            let txt = data.type === 'text' ? `<div class="msg-text">${data.content}</div>` : `${media}<div style="font-size:14px; color:#b5bac1; margin-top:4px;">${data.caption}</div>`;
             
             let delBtn = data.user.toLowerCase() === "{{ user.username.lower() }}" ? `<div class="msg-actions"><span style="cursor:pointer;" onclick="deleteMsg(event, ${data.id})">🗑️</span></div>` : "";
 
@@ -165,12 +178,13 @@
         }
 
         function deleteMsg(e, id) {
-            if(e.shiftKey || confirm("Bu mesaj silinsin mi?")) socket.emit('delete_message', {id: id});
+            if(e.shiftKey || confirm("Silinsin mi?")) socket.emit('delete_message', {id: id});
         }
 
-        // Mesaj Gönderimi
-        $('#myMessage').on('keypress', function(e) {
+        // ENTER İle Gönderme (Fix)
+        $('#myMessage').on('keydown', function(e) {
             if(e.which == 13) {
+                e.preventDefault();
                 let val = $(this).val();
                 if(selectedFile) {
                     let reader = new FileReader();
@@ -201,7 +215,7 @@
         socket.on('update_users', users => {
             $('#member-list').html('<div style="font-size:12px; font-weight:bold; color:#949ba4; margin-bottom:15px;">ÇEVRİMİÇİ — '+Object.keys(users).length+'</div>');
             for(let u in users) {
-                $('#member-list').append(`<div class="member-item"><img src="${users[u].avatar}" style="width:32px; border-radius:50%;"><span style="flex:1; font-size:14px;">${users[u].name}</span><div class="status-online"></div></div>`);
+                $('#member-list').append(`<div class="member-item"><img src="${users[u].avatar}" style="width:32px; height:32px; border-radius:50%;"><span style="flex:1; font-size:14px;">${users[u].name}</span><div class="status-online"></div></div>`);
             }
         });
 
