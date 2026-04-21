@@ -56,7 +56,7 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
           return response;
         })
-        .catch(() => caches.match("/"));
+        .catch(() => caches.match("/login"));
     })
   );
 });

@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Mertcord</title>
+    <title>Chat</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#5865f2">
     <link rel="icon" href="/static/icons/icon-192.svg" type="image/svg+xml">
@@ -10,425 +10,994 @@
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #313338; color: #dbdee1; overflow: hidden; }
-        .app-container { display: flex; height: 100vh; }
-        .sidebar { width: 240px; background-color: #2b2d31; display: flex; flex-direction: column; flex-shrink: 0; }
-        .member-list { width: 240px; background-color: #2b2d31; flex-shrink: 0; padding: 15px; border-left: 1px solid #1f2124; overflow-y: auto; }
-        .chat-area { flex: 1; display: flex; flex-direction: column; min-width: 0; position: relative; }
-        .chat-header { height: 48px; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid #1f2124; font-weight: bold; color: white; }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; }
-        .message-wrapper { display: flex; margin-bottom: 15px; position: relative; padding: 5px; border-radius: 4px; }
-        .message-wrapper:hover { background: rgba(0,0,0,0.05); }
-        .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; flex-shrink: 0; object-fit: cover; }
-        .msg-user { color: #ffffff; font-weight: 600; font-size: 1rem; }
-        .msg-text { color: #dbdee1; word-wrap: break-word; white-space: pre-wrap; }
-        .msg-media { max-width: 400px; max-height: 300px; border-radius: 8px; margin: 5px 0; cursor: pointer; border: 1px solid #232428; }
-        .reply-box { background: rgba(255,255,255,0.05); border-left: 2px solid #5865f2; padding: 3px 10px; margin-bottom: 5px; font-size: 12px; border-radius: 4px; color: #b5bac1; }
-        .msg-actions { display: none; position: absolute; right: 10px; top: 5px; background: #2b2d31; border: 1px solid #1f2124; padding: 4px; border-radius: 4px; z-index: 5; }
-        .message-wrapper:hover .msg-actions { display: flex; gap: 8px; }
-        .action-btn { cursor: pointer; opacity: 0.7; transition: 0.2s; font-size: 14px; }
-        .action-btn:hover { opacity: 1; color: white; }
-        .input-section { padding: 0 20px 20px 20px; }
-        .typing-info { font-size: 12px; color: #b5bac1; height: 20px; margin-bottom: 4px; }
-        .reply-active-bar { background: #2b2d31; padding: 8px 15px; border-radius: 8px 8px 0 0; border: 1px solid #5865f2; display: none; justify-content: space-between; align-items: center; font-size: 12px; }
-        .input-wrapper { background: #383a40; border-radius: 8px; display: flex; align-items: center; padding: 0 15px; min-height: 44px; }
-        .plus-btn { font-size: 24px; color: #b5bac1; cursor: pointer; margin-right: 15px; }
-        #myMessage { background: transparent; border: none; color: #fff; flex: 1; outline: none; padding: 10px 0; }
-        #preview-area { display: none; background: #2b2d31; border: 1px solid #5865f2; border-radius: 8px 8px 0 0; padding: 10px; align-items: center; gap: 15px; }
-        .prev-img { width: 60px; height: 60px; border-radius: 4px; object-fit: cover; }
-        .upload-meta { display:flex; flex-direction:column; gap:6px; min-width:0; flex:1; }
-        .upload-progress { width:100%; height:8px; background:#1e1f22; border-radius:999px; overflow:hidden; }
-        .upload-progress-bar { width:0%; height:100%; background:linear-gradient(90deg, #5865f2, #7a84ff); transition:width 0.15s ease; }
-        .upload-stats { font-size:12px; color:#b5bac1; }
-        #lightbox { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); justify-content: center; align-items: center; }
-        #lightbox img, #lightbox video { max-width: 90%; max-height: 90%; border-radius: 8px; }
-        .member-item { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-        .status-online { width: 10px; height: 10px; background: #23a55a; border-radius: 50%; }
-        #settingsModal { display:none; position:fixed; z-index:900; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8); }
-        .modal-content { background:#313338; margin:10% auto; padding:25px; border-radius:8px; width:300px; color:white; }
-        .modal-content input { width:100%; padding:10px; margin: 10px 0; background:#1e1f22; border:none; color:white; border-radius:4px; box-sizing: border-box; }
-        .utility-btn { background:#5865f2; color:#fff; border:none; border-radius:6px; padding:8px 10px; margin:10px; cursor:pointer; font-size:12px; }
-        .utility-btn.secondary { background:#4e5058; }
+        :root {
+            --bg-main: #313338;
+            --bg-panel: #2b2d31;
+            --bg-soft: #383a40;
+            --bg-hover: rgba(255, 255, 255, 0.04);
+            --bg-footer: #232428;
+            --line: #1f2124;
+            --text-main: #dbdee1;
+            --text-soft: #b5bac1;
+            --text-dim: #949ba4;
+            --accent: #5865f2;
+            --danger: #ed4245;
+            --success: #23a55a;
+        }
+
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; height: 100%; }
+        body {
+            font-family: "Segoe UI", Tahoma, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-main);
+            overflow: hidden;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 240px 1fr 240px;
+            height: 100vh;
+        }
+
+        .sidebar,
+        .member-list {
+            background: var(--bg-panel);
+            min-width: 0;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--line);
+        }
+
+        .member-list {
+            border-left: 1px solid var(--line);
+            padding: 16px 12px;
+            overflow-y: auto;
+        }
+
+        .panel-header,
+        .chat-header {
+            height: 48px;
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            border-bottom: 1px solid var(--line);
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .channel-chip {
+            margin: 12px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            background: #3f4147;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .utility-btn {
+            margin: 0 12px 10px;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 12px;
+            background: var(--accent);
+            color: #fff;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .utility-btn.secondary {
+            background: #4e5058;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 10px;
+            background: var(--bg-footer);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-footer img {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .sidebar-user {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .sidebar-user strong {
+            display: block;
+            font-size: 13px;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-action {
+            color: var(--text-soft);
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .sidebar-action:hover {
+            color: #fff;
+        }
+
+        .chat-area {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .message-wrapper {
+            position: relative;
+            display: flex;
+            gap: 14px;
+            padding: 8px 10px;
+            margin-bottom: 4px;
+            border-radius: 8px;
+        }
+
+        .message-wrapper:hover {
+            background: var(--bg-hover);
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            flex-shrink: 0;
+            background: #202225;
+        }
+
+        .msg-content {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .msg-user {
+            color: #fff;
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+
+        .msg-text {
+            color: var(--text-main);
+            white-space: pre-wrap;
+            word-break: break-word;
+            line-height: 1.45;
+        }
+
+        .msg-media {
+            display: block;
+            max-width: 420px;
+            max-height: 320px;
+            width: auto;
+            border-radius: 10px;
+            border: 1px solid #232428;
+            margin: 6px 0 0;
+            cursor: pointer;
+            background: #202225;
+        }
+
+        .msg-caption {
+            color: var(--text-soft);
+            font-size: 14px;
+            margin-top: 8px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .reply-box {
+            margin-bottom: 8px;
+            padding: 6px 10px;
+            border-left: 2px solid var(--accent);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-soft);
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .msg-actions {
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            display: none;
+            gap: 8px;
+            padding: 6px 8px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: var(--bg-panel);
+        }
+
+        .message-wrapper:hover .msg-actions {
+            display: flex;
+        }
+
+        .action-btn {
+            cursor: pointer;
+            font-size: 14px;
+            opacity: 0.78;
+            user-select: none;
+        }
+
+        .action-btn:hover {
+            opacity: 1;
+        }
+
+        .input-section {
+            padding: 0 20px 20px;
+        }
+
+        .typing-info {
+            height: 20px;
+            margin-bottom: 4px;
+            color: var(--text-soft);
+            font-size: 12px;
+        }
+
+        .reply-active-bar {
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            border: 1px solid var(--accent);
+            border-radius: 10px 10px 0 0;
+            background: var(--bg-panel);
+            color: var(--text-soft);
+            font-size: 12px;
+        }
+
+        #preview-area {
+            display: none;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 8px;
+            padding: 10px 12px;
+            border: 1px solid var(--accent);
+            border-radius: 10px 10px 0 0;
+            background: var(--bg-panel);
+        }
+
+        .prev-img {
+            width: 64px;
+            height: 64px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #202225;
+        }
+
+        .upload-meta {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .upload-title {
+            font-size: 12px;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .upload-stats {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--text-soft);
+        }
+
+        .upload-progress {
+            width: 100%;
+            height: 8px;
+            margin-top: 8px;
+            border-radius: 999px;
+            overflow: hidden;
+            background: #1e1f22;
+        }
+
+        .upload-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #5865f2, #7a84ff);
+            transition: width 0.12s ease;
+        }
+
+        .preview-cancel {
+            border: none;
+            background: none;
+            color: var(--danger);
+            cursor: pointer;
+        }
+
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 46px;
+            padding: 0 14px;
+            border-radius: 10px;
+            background: var(--bg-soft);
+        }
+
+        .plus-btn {
+            font-size: 24px;
+            color: var(--text-soft);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .plus-btn:hover {
+            color: #fff;
+        }
+
+        #myMessage {
+            flex: 1;
+            min-width: 0;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: #fff;
+            padding: 12px 0;
+            font-size: 15px;
+        }
+
+        .member-title {
+            margin-bottom: 14px;
+            color: var(--text-dim);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .member-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .member-item img {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .member-name {
+            flex: 1;
+            min-width: 0;
+            font-size: 14px;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .status-online {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success);
+            flex-shrink: 0;
+        }
+
+        #lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.92);
+        }
+
+        #lightbox img,
+        #lightbox video {
+            max-width: 92%;
+            max-height: 92%;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+        }
+
+        #settingsModal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 900;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-content {
+            width: min(320px, calc(100vw - 32px));
+            margin: 10vh auto 0;
+            padding: 24px;
+            border-radius: 12px;
+            background: var(--bg-main);
+            color: #fff;
+        }
+
+        .modal-content h3 {
+            margin: 0 0 14px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 8px;
+            outline: none;
+            background: #1e1f22;
+            color: #fff;
+        }
+
+        .modal-content button {
+            width: 100%;
+            padding: 10px 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .save-btn {
+            margin-top: 6px;
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .cancel-btn {
+            margin-top: 8px;
+            background: transparent;
+            color: var(--text-main);
+        }
+
+        @media (max-width: 920px) {
+            .app-container {
+                grid-template-columns: 240px 1fr;
+            }
+
+            .member-list {
+                display: none;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .app-container {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="app-container">
-        <div class="sidebar">
-            <div class="chat-header">Mertcord</div>
-            <div style="padding:10px; font-size:14px; color:#fff; background:#3f4147; margin:10px; border-radius:4px;"># genel-sohbet</div>
-            <button id="notify-btn" class="utility-btn">Bildirimleri Ac</button>
-            <button id="install-btn" class="utility-btn secondary" style="display:none;">PC Uygulamasi Olarak Yukle</button>
-            <div style="margin-top:auto; padding:10px; background:#232428; display:flex; align-items:center; gap:10px;">
-                <img src="{{ user.avatar }}" style="width:32px; height:32px; border-radius:50%;">
-                <span style="font-weight:bold; flex:1; font-size:13px;">{{ user.username.capitalize() }}</span>
-                <span style="cursor:pointer;" onclick="$('#settingsModal').show()">⚙️</span>
-                <a href="/logout" style="text-decoration:none;">❌</a>
+        <aside class="sidebar">
+            <div class="panel-header">Chat</div>
+            <div class="channel-chip"># genel-sohbet</div>
+            <button id="notify-btn" class="utility-btn">Bildirimleri Aç</button>
+            <button id="install-btn" class="utility-btn secondary" style="display:none;">PC Uygulaması Olarak Yükle</button>
+
+            <div class="sidebar-footer">
+                <img src="{{ user.avatar }}" alt="Profil">
+                <div class="sidebar-user">
+                    <strong>{{ user.username.capitalize() }}</strong>
+                </div>
+                <div class="sidebar-actions">
+                    <span class="sidebar-action" id="settings-toggle" title="Ayarlar">⚙</span>
+                    <a class="sidebar-action" href="/logout" title="Çıkış Yap">⎋</a>
+                </div>
             </div>
-        </div>
-        <div class="chat-area">
+        </aside>
+
+        <main class="chat-area">
             <div class="chat-header"># genel-sohbet</div>
+
             <div id="messages">
                 {% for m in old_messages %}
-                    <script>$(document).ready(function(){ renderMessage({id: {{ m.id }}, user: {{ m.user|tojson }}, content: {{ m.content|tojson }}, caption: {{ m.caption|tojson }}, avatar: {{ m.avatar|tojson }}, type: {{ m.msg_type|tojson }}, reply_to: {{ m.reply_to|tojson }} }); });</script>
+                    <script>
+                        $(function () {
+                            renderMessage({
+                                id: {{ m.id }},
+                                user: {{ m.user|tojson }},
+                                content: {{ m.content|tojson }},
+                                caption: {{ m.caption|tojson }},
+                                avatar: {{ m.avatar|tojson }},
+                                type: {{ m.msg_type|tojson }},
+                                reply_to: {{ m.reply_to|tojson }}
+                            });
+                        });
+                    </script>
                 {% endfor %}
             </div>
+
             <div class="input-section">
                 <div class="typing-info" id="typing-box"></div>
+
                 <div id="reply-bar" class="reply-active-bar">
                     <span id="reply-text"></span>
-                    <span onclick="cancelReply()" style="cursor:pointer;">✖</span>
+                    <span id="reply-cancel" style="cursor:pointer;">✕</span>
                 </div>
+
                 <div id="preview-area">
-                    <img id="prev-box" class="prev-img">
+                    <img id="prev-box" class="prev-img" alt="Önizleme">
                     <div class="upload-meta">
-                        <div id="prev-name" style="font-size:12px; color:#fff;"></div>
+                        <div id="prev-name" class="upload-title"></div>
                         <div id="upload-stats" class="upload-stats"></div>
                         <div class="upload-progress">
                             <div id="upload-progress-bar" class="upload-progress-bar"></div>
                         </div>
                     </div>
-                    <button onclick="cancelFile()" style="background:none; border:none; color:#f04747; cursor:pointer;">Vazgeç</button>
+                    <button id="preview-cancel" class="preview-cancel" type="button">Vazgeç</button>
                 </div>
+
                 <div class="input-wrapper">
                     <label class="plus-btn" for="file-in">+</label>
-                    <input type="file" id="file-in" style="display:none;" accept="image/*,video/*">
+                    <input type="file" id="file-in" hidden accept="image/*,video/*">
                     <input id="myMessage" type="text" placeholder="Mesaj gönder..." autocomplete="off">
                 </div>
             </div>
-        </div>
-        <div class="member-list" id="member-list">
-            <div style="font-size:12px; font-weight:bold; color:#949ba4; margin-bottom:15px;">ÇEVRİMİÇİ ÜYELER</div>
-        </div>
+        </main>
+
+        <aside class="member-list" id="member-list">
+            <div class="member-title">ÇEVRİMİÇİ ÜYELER</div>
+        </aside>
     </div>
-    <div id="lightbox" onclick="$(this).hide().empty()"></div>
+
+    <div id="lightbox"></div>
+
     <div id="settingsModal">
         <div class="modal-content">
             <h3>Ayarlar</h3>
             <form action="/update_profile" method="POST">
-                <input type="text" name="username" value="{{ user.username }}">
-                <input type="password" name="password" placeholder="Yeni Şifre">
-                <input type="text" name="avatar_url" value="{{ user.avatar }}">
-                <button type="submit" style="width:100%; background:#5865f2; color:white; border:none; padding:10px; border-radius:4px; cursor:pointer;">Kaydet</button>
-                <button type="button" onclick="$('#settingsModal').hide()" style="width:100%; background:transparent; border:none; color:#fff; margin-top:5px; cursor:pointer;">İptal</button>
+                <input type="text" name="username" value="{{ user.username }}" placeholder="Kullanıcı adı">
+                <input type="password" name="password" placeholder="Yeni şifre">
+                <input type="text" name="avatar_url" value="{{ user.avatar }}" placeholder="Profil foto URL">
+                <button type="submit" class="save-btn">Kaydet</button>
+                <button type="button" class="cancel-btn" id="settings-close">İptal</button>
             </form>
         </div>
     </div>
+
     <script>
         var socket = io();
         var selectedFile = null;
         var currentReply = null;
-        var typingTimer;
+        var typingTimer = null;
         var lastMyId = null;
-        var notificationIcon = "/static/icons/icon-192.svg";
         var deferredInstallPrompt = null;
+        var notificationIcon = "/static/icons/icon-192.svg";
         var notificationBatch = [];
         var notificationTimer = null;
         var notificationWindowMs = 3500;
-        var uploadPercent = 0;
 
         function escapeHtml(value) {
-            return String(value || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
+            return String(value ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function truncateText(text, limit) {
+            var clean = String(text ?? "").replace(/\s+/g, " ").trim();
+            return clean.length > limit ? clean.slice(0, limit) + "..." : clean;
         }
 
         function formatFileSize(bytes) {
-            if (!bytes && bytes !== 0) return '';
             if (bytes < 1024 * 1024) {
-                return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / 1024).toFixed(1) + " KB";
             }
-            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
-        }
-
-        function shortenText(text, limit) {
-            let clean = String(text || '').replace(/\s+/g, ' ').trim();
-            return clean.length > limit ? clean.slice(0, limit) + '...' : clean;
+            return (bytes / (1024 * 1024)).toFixed(2) + " MB";
         }
 
         function updateUploadStatus(percent, file) {
-            uploadPercent = percent;
-            $('#upload-progress-bar').css('width', percent + '%');
+            $("#upload-progress-bar").css("width", percent + "%");
             if (file) {
-                $('#upload-stats').text(formatFileSize(file.size) + ' • ' + percent + '% yuklendi');
+                $("#upload-stats").text(formatFileSize(file.size) + " • " + percent + "% yüklendi");
             } else {
-                $('#upload-stats').text(percent + '% yuklendi');
+                $("#upload-stats").text(percent + "% yüklendi");
             }
         }
 
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/service-worker.js');
+        function cancelFile() {
+            selectedFile = null;
+            $("#file-in").val("");
+            $("#preview-area").hide();
+            $("#prev-box").attr("src", "").show();
+            $("#prev-name").text("");
+            $("#upload-stats").text("");
+            $("#upload-progress-bar").css("width", "0%");
         }
 
-        fetch('/api/notification-icon')
-            .then(res => res.json())
-            .then(data => {
-                if (data.icon) notificationIcon = data.icon;
-            })
-            .catch(() => {});
-
-        window.addEventListener('beforeinstallprompt', function(e) {
-            e.preventDefault();
-            deferredInstallPrompt = e;
-            $('#install-btn').show();
-        });
-
-        $('#install-btn').on('click', async function() {
-            if (!deferredInstallPrompt) return;
-            deferredInstallPrompt.prompt();
-            await deferredInstallPrompt.userChoice;
-            deferredInstallPrompt = null;
-            $('#install-btn').hide();
-        });
-
-        async function requestDesktopNotifications() {
-            if (!('Notification' in window)) {
-                alert('Bu tarayici masaustu bildirimi desteklemiyor.');
-                return;
+        function handleFileSelection(file) {
+            selectedFile = file;
+            $("#preview-area").css("display", "flex");
+            $("#upload-progress-bar").css("width", "0%");
+            $("#prev-name").text(file.name || (file.type.startsWith("image/") ? "Görsel seçildi" : "Video seçildi"));
+            if (file.type.startsWith("image/")) {
+                $("#prev-box").attr("src", URL.createObjectURL(file)).show();
+            } else {
+                $("#prev-box").hide();
             }
+            updateUploadStatus(0, file);
+            $("#myMessage").focus();
+        }
 
-            let permission = Notification.permission;
-            if (permission !== 'granted') {
-                permission = await Notification.requestPermission();
-            }
+        function setReply(user, preview) {
+            currentReply = user + ": " + preview;
+            $("#reply-text").text("Yanıt: " + currentReply);
+            $("#reply-bar").css("display", "flex");
+            $("#myMessage").focus();
+        }
 
-            if (permission === 'granted') {
-                $('#notify-btn').text('Bildirimler Acik');
-            }
+        function cancelReply() {
+            currentReply = null;
+            $("#reply-bar").hide();
+            $("#reply-text").text("");
+        }
+
+        function zoomMedia(sourceNode) {
+            var $lightbox = $("#lightbox");
+            var clone = $(sourceNode).clone();
+            clone.removeAttr("style");
+            clone.prop("controls", true);
+            $lightbox.empty().append(clone).css("display", "flex");
         }
 
         function playNotificationSound() {
             try {
-                let AudioCtx = window.AudioContext || window.webkitAudioContext;
+                var AudioCtx = window.AudioContext || window.webkitAudioContext;
                 if (!AudioCtx) return;
+                var audioContext = new AudioCtx();
+                var oscillator = audioContext.createOscillator();
+                var gainNode = audioContext.createGain();
 
-                let audioContext = new AudioCtx();
-                let oscillator = audioContext.createOscillator();
-                let gainNode = audioContext.createGain();
-
-                oscillator.type = 'sine';
+                oscillator.type = "sine";
                 oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
                 gainNode.gain.setValueAtTime(0.0001, audioContext.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.12, audioContext.currentTime + 0.01);
                 gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.35);
-
                 oscillator.connect(gainNode);
                 gainNode.connect(audioContext.destination);
                 oscillator.start();
                 oscillator.stop(audioContext.currentTime + 0.35);
+                oscillator.onended = function () { audioContext.close(); };
+            } catch (error) {}
+        }
 
-                oscillator.onended = function() {
-                    audioContext.close();
-                };
-            } catch (e) {}
+        async function requestDesktopNotifications() {
+            if (!("Notification" in window)) {
+                alert("Bu tarayıcı masaüstü bildirimi desteklemiyor.");
+                return;
+            }
+
+            var permission = Notification.permission;
+            if (permission !== "granted") {
+                permission = await Notification.requestPermission();
+            }
+
+            if (permission === "granted") {
+                $("#notify-btn").text("Bildirimler Açık");
+            }
         }
 
         async function flushDesktopNotifications() {
             if (!notificationBatch.length) return;
 
-            let count = notificationBatch.length;
-            let latest = notificationBatch[notificationBatch.length - 1];
-            let body = latest.body;
-
-            if (count > 1) {
-                body += ' (x' + count + ')';
-            }
+            var count = notificationBatch.length;
+            var latest = notificationBatch[notificationBatch.length - 1];
+            var body = latest.body + (count > 1 ? " (x" + count + ")" : "");
 
             playNotificationSound();
 
             try {
-                let registration = await navigator.serviceWorker.getRegistration();
+                var registration = await navigator.serviceWorker.getRegistration();
                 if (registration) {
                     await registration.showNotification(latest.title, {
                         body: body,
                         icon: notificationIcon,
                         badge: notificationIcon,
-                        tag: 'mertcord-grouped-message',
+                        tag: "chat-grouped-message",
                         renotify: true
                     });
-                    notificationBatch = [];
-                    return;
+                } else {
+                    var notification = new Notification(latest.title, {
+                        body: body,
+                        icon: notificationIcon,
+                        tag: "chat-grouped-message"
+                    });
+                    notification.onclick = function () {
+                        window.focus();
+                        notification.close();
+                    };
                 }
-            } catch (e) {}
-
-            let notification = new Notification(latest.title, {
-                body: body,
-                icon: notificationIcon,
-                tag: 'mertcord-grouped-message'
-            });
-
-            notification.onclick = function() {
-                window.focus();
-                notification.close();
-            };
+            } catch (error) {}
 
             notificationBatch = [];
         }
 
-        async function showDesktopNotification(data) {
-            if (!('Notification' in window) || Notification.permission !== 'granted') return;
-            if (document.visibilityState === 'visible' && document.hasFocus()) return;
+        function queueDesktopNotification(data) {
+            if (!("Notification" in window) || Notification.permission !== "granted") return;
+            if (document.visibilityState === "visible" && document.hasFocus()) return;
             if (data.user.toLowerCase() === "{{ user.username.lower() }}") return;
 
-            let body = data.type === 'text'
-                ? data.content
-                : (data.caption || (data.type === 'image' ? 'Bir fotograf gonderdi.' : 'Bir video gonderdi.'));
-
             notificationBatch.push({
-                title: data.user + ' yeni mesaj gonderdi',
-                body: body
+                title: data.user + " yeni mesaj gönderdi",
+                body: data.type === "text"
+                    ? data.content
+                    : (data.caption || (data.type === "image" ? "Bir görsel gönderdi." : "Bir video gönderdi."))
             });
 
             if (notificationTimer) {
                 clearTimeout(notificationTimer);
             }
 
-            notificationTimer = setTimeout(() => {
+            notificationTimer = setTimeout(function () {
                 flushDesktopNotifications();
                 notificationTimer = null;
             }, notificationWindowMs);
         }
 
-        $('#notify-btn').on('click', requestDesktopNotifications);
+        function renderMessage(data) {
+            var isMe = data.user.toLowerCase() === "{{ user.username.lower() }}";
+            if (isMe) lastMyId = data.id;
 
-        document.onpaste = function(e) {
-            let items = e.clipboardData.items;
-            for (let i = 0; i < items.length; i++) {
-                if (items[i].type.indexOf('image/') !== -1 || items[i].type.indexOf('video/') !== -1) {
-                    let file = items[i].getAsFile();
+            var safeUser = escapeHtml(data.user);
+            var safeAvatar = escapeHtml(data.avatar);
+            var safeCaption = escapeHtml(data.caption || "");
+            var safeReply = escapeHtml(data.reply_to || "");
+            var previewText = truncateText(data.type === "text" ? data.content : (data.caption || data.type), 30);
+            var mediaHtml = "";
+            var bodyHtml = "";
+
+            if (data.type === "image") {
+                mediaHtml = '<img src="' + escapeHtml(data.content) + '" class="msg-media zoomable" alt="Görsel">';
+                bodyHtml = mediaHtml + (safeCaption ? '<div class="msg-caption">' + safeCaption + '</div>' : "");
+            } else if (data.type === "video") {
+                mediaHtml = '<video class="msg-media zoomable" controls><source src="' + escapeHtml(data.content) + '"></video>';
+                bodyHtml = mediaHtml + (safeCaption ? '<div class="msg-caption">' + safeCaption + '</div>' : "");
+            } else {
+                bodyHtml = '<div class="msg-text" id="t-' + data.id + '">' + escapeHtml(data.content).replace(/\n/g, "<br>") + '</div>';
+            }
+
+            var replyHtml = safeReply ? '<div class="reply-box">' + safeReply + '</div>' : "";
+            var actionHtml = [
+                '<div class="msg-actions">',
+                '<span class="action-btn reply-action" data-user="' + safeUser + '" data-preview="' + escapeHtml(previewText) + '" title="Yanıtla">💬</span>',
+                isMe ? '<span class="action-btn edit-action" data-id="' + data.id + '" title="Düzenle">✏️</span>' : '',
+                isMe ? '<span class="action-btn delete-action" data-id="' + data.id + '" title="Sil">🗑️</span>' : '',
+                '</div>'
+            ].join("");
+
+            $("#messages").append(
+                '<div class="message-wrapper" id="msg-' + data.id + '">' +
+                    '<img src="' + safeAvatar + '" class="avatar" alt="Avatar">' +
+                    '<div class="msg-content">' +
+                        replyHtml +
+                        '<div class="msg-user">' + safeUser + '</div>' +
+                        bodyHtml +
+                    '</div>' +
+                    actionHtml +
+                '</div>'
+            );
+
+            $("#messages").scrollTop($("#messages")[0].scrollHeight);
+        }
+
+        function editMsg(id) {
+            var oldText = $("#t-" + id).text();
+            var newText = prompt("Mesajı düzenle:", oldText);
+            if (newText && newText !== oldText) {
+                socket.emit("edit_message", { id: id, content: newText });
+            }
+        }
+
+        function deleteMsg(event, id) {
+            if (event && event.shiftKey) {
+                socket.emit("delete_message", { id: id });
+                return;
+            }
+            if (confirm("Bu mesajı silmek istiyor musun?")) {
+                socket.emit("delete_message", { id: id });
+            }
+        }
+
+        function emitTypingPulse() {
+            socket.emit("typing", { status: true });
+            clearTimeout(typingTimer);
+            typingTimer = setTimeout(function () {
+                socket.emit("typing", { status: false });
+            }, 1800);
+        }
+
+        if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.register("/service-worker.js");
+        }
+
+        fetch("/api/notification-icon")
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (data.icon) notificationIcon = data.icon;
+            })
+            .catch(function () {});
+
+        window.addEventListener("beforeinstallprompt", function (event) {
+            event.preventDefault();
+            deferredInstallPrompt = event;
+            $("#install-btn").show();
+        });
+
+        $("#install-btn").on("click", async function () {
+            if (!deferredInstallPrompt) return;
+            deferredInstallPrompt.prompt();
+            await deferredInstallPrompt.userChoice;
+            deferredInstallPrompt = null;
+            $("#install-btn").hide();
+        });
+
+        $("#notify-btn").on("click", requestDesktopNotifications);
+        $("#settings-toggle").on("click", function () { $("#settingsModal").show(); });
+        $("#settings-close").on("click", function () { $("#settingsModal").hide(); });
+        $("#reply-cancel").on("click", cancelReply);
+        $("#preview-cancel").on("click", cancelFile);
+        $("#lightbox").on("click", function () { $(this).hide().empty(); });
+
+        $("#file-in").on("change", function (event) {
+            var file = event.target.files[0];
+            if (file) handleFileSelection(file);
+        });
+
+        document.onpaste = function (event) {
+            var items = event.clipboardData ? event.clipboardData.items : [];
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                if (item.type.indexOf("image/") !== -1 || item.type.indexOf("video/") !== -1) {
+                    var file = item.getAsFile();
                     if (file) {
                         handleFileSelection(file);
+                        break;
                     }
                 }
             }
         };
 
-        $(document).on('keydown', e => {
-            if(e.which == 38 && $('#myMessage').val() === "" && lastMyId) editMsg(lastMyId);
+        $(document).on("keydown", function (event) {
+            if (event.which === 38 && $("#myMessage").val() === "" && lastMyId) {
+                editMsg(lastMyId);
+            }
         });
 
-        function handleFileSelection(file) {
-            selectedFile = file;
-            $('#preview-area').css('display', 'flex');
-            $('#upload-progress-bar').css('width', '0%');
-            if(file.type.startsWith('image/')) {
-                $('#prev-box').attr('src', URL.createObjectURL(file)).show();
-                $('#prev-name').text(file.name || 'Gorsel secildi');
-            } else {
-                $('#prev-box').hide();
-                $('#prev-name').text("Video: " + file.name);
-            }
-            updateUploadStatus(0, file);
-            $('#myMessage').focus();
-        }
-
-        $('#file-in').on('change', function(e) {
-            let file = e.target.files[0];
-            if(file) handleFileSelection(file);
+        $(document).on("click", ".zoomable", function () {
+            zoomMedia(this);
         });
 
-        function renderMessage(data) {
-            let isMe = data.user.toLowerCase() === "{{ user.username.lower() }}";
-            if(isMe) lastMyId = data.id;
-            let replyHtml = (data.reply_to && data.reply_to !== 'None') ? `<div class="reply-box">${escapeHtml(data.reply_to)}</div>` : '';
-            let media = '';
-            if(data.type === 'image') {
-                media = `<img src="${escapeHtml(data.content)}" class="msg-media" onclick="zoomMedia(this)">`;
-            } else if(data.type === 'video') {
-                media = `<video class="msg-media" controls><source src="${escapeHtml(data.content)}">Tarayıcın desteklemiyor.</video>`;
-            }
-            let safeContent = escapeHtml(data.content).replace(/\n/g, '<br>');
-            let safeCaption = escapeHtml(data.caption);
-            let safeUser = escapeHtml(data.user);
-            let previewText = escapeHtml(shortenText(data.type === 'text' ? data.content : (data.caption || data.type), 30));
-            let txt = data.type === 'text' ? `<div class="msg-text" id="t-${data.id}">${safeContent}</div>` : `${media}<div style="font-size:14px; color:#b5bac1; margin-top:4px;">${safeCaption}</div>`;
-            let menu = `<div class="msg-actions">
-                <span class="action-btn" title="Yanıtla" onclick="setReply(this.dataset.user, this.dataset.preview)" data-user="${safeUser}" data-preview="${previewText}">💬</span>
-                ${isMe ? `<span class="action-btn" title="Düzenle" onclick="editMsg(${data.id})">✏️</span>` : ''}
-                ${isMe ? `<span class="action-btn" title="Sil" onclick="deleteMsg(event, ${data.id})">🗑️</span>` : ''}
-            </div>`;
-            $('#messages').append(`<div class="message-wrapper" id="msg-${data.id}">
-                <img src="${escapeHtml(data.avatar)}" class="avatar">
-                <div class="msg-content">${replyHtml}<div class="msg-user">${safeUser}</div>${txt}</div>
-                ${menu}
-            </div>`);
-            $("#messages").scrollTop($("#messages")[0].scrollHeight);
-        }
+        $(document).on("click", ".reply-action", function () {
+            setReply(this.dataset.user, this.dataset.preview);
+        });
 
-        function setReply(user, text) {
-            currentReply = user + ": " + text.replace(/<[^>]*>?/gm, '');
-            $('#reply-text').text("Yanıt: " + currentReply);
-            $('#reply-bar').css('display', 'flex');
-            $('#myMessage').focus();
-        }
+        $(document).on("click", ".edit-action", function () {
+            editMsg(Number(this.dataset.id));
+        });
 
-        function cancelReply() { currentReply = null; $('#reply-bar').hide(); }
-        function editMsg(id) {
-            let old = $('#t-'+id).text();
-            let n = prompt("Düzenle:", old);
-            if(n && n !== old) socket.emit('edit_message', {id: id, content: n});
-        }
-        function deleteMsg(e, id) { if(e.shiftKey || confirm("Silinsin mi?")) socket.emit('delete_message', {id: id}); }
-        function zoomMedia(el) { $('#lightbox').empty().append($(el).clone().removeAttr('onclick')).css('display', 'flex'); }
-        function cancelFile() {
-            selectedFile = null;
-            $('#preview-area').hide();
-            $('#file-in').val('');
-            $('#upload-stats').text('');
-            $('#upload-progress-bar').css('width', '0%');
-        }
+        $(document).on("click", ".delete-action", function (event) {
+            deleteMsg(event, Number(this.dataset.id));
+        });
 
-        $('#myMessage').on('keydown', function(e) {
-            if(e.which == 13) {
-                e.preventDefault();
-                let val = $(this).val();
-                if(selectedFile) {
-                    let reader = new FileReader();
-                    reader.onprogress = ev => {
-                        if (ev.lengthComputable) {
-                            let percent = Math.round((ev.loaded / ev.total) * 100);
-                            updateUploadStatus(percent, selectedFile);
-                        }
-                    };
-                    reader.onload = ev => {
-                        updateUploadStatus(100, selectedFile);
-                        socket.emit('message', {
-                            content: ev.target.result,
-                            caption: val,
-                            type: selectedFile.type.startsWith('image/') ? 'image' : 'video',
-                            reply_to: currentReply
-                        });
-                        cancelFile(); cancelReply(); $('#myMessage').val('');
-                    };
-                    reader.readAsDataURL(selectedFile);
-                } else if(val.trim() !== "") {
-                    socket.emit('message', {content: val, type: 'text', reply_to: currentReply});
-                    $(this).val(''); cancelReply();
+        $("#myMessage").on("input", function () {
+            emitTypingPulse();
+        });
+
+        $("#myMessage").on("keydown", function (event) {
+            if (event.which !== 13) return;
+
+            event.preventDefault();
+            var text = $(this).val();
+
+            if (selectedFile) {
+                var file = selectedFile;
+                if (file.size > 100 * 1024 * 1024) {
+                    alert("Dosya 100 MB sınırını aşıyor.");
+                    return;
                 }
-            } else {
-                socket.emit('typing', {status: true});
-                clearTimeout(typingTimer);
-                typingTimer = setTimeout(() => socket.emit('typing', {status: false}), 2000);
+
+                var reader = new FileReader();
+                reader.onprogress = function (progressEvent) {
+                    if (progressEvent.lengthComputable) {
+                        updateUploadStatus(Math.round((progressEvent.loaded / progressEvent.total) * 100), file);
+                    }
+                };
+                reader.onload = function (loadEvent) {
+                    updateUploadStatus(100, file);
+                    socket.emit("message", {
+                        content: loadEvent.target.result,
+                        caption: text,
+                        type: file.type.startsWith("image/") ? "image" : "video",
+                        reply_to: currentReply
+                    });
+                    cancelFile();
+                    cancelReply();
+                    $("#myMessage").val("");
+                };
+                reader.readAsDataURL(file);
+                return;
+            }
+
+            if (text.trim() !== "") {
+                socket.emit("message", {
+                    content: text,
+                    type: "text",
+                    reply_to: currentReply
+                });
+                $(this).val("");
+                cancelReply();
             }
         });
 
-        socket.on('message', data => {
+        socket.on("message", function (data) {
             renderMessage(data);
-            showDesktopNotification(data);
+            queueDesktopNotification(data);
         });
-        socket.on('message_edited', d => { $('#t-'+d.id).text(d.content); });
-        socket.on('message_deleted', d => $(`#msg-${d.id}`).remove());
-        socket.on('update_users', users => {
-            $('#member-list').html('<div style="font-size:12px; font-weight:bold; color:#949ba4; margin-bottom:15px;">ÇEVRİMİÇİ — '+Object.keys(users).length+'</div>');
-            for(let u in users) {
-                $('#member-list').append(`<div class="member-item"><img src="${users[u].avatar}" style="width:32px; height:32px; border-radius:50%;"><span style="flex:1; font-size:14px;">${users[u].name}</span><div class="status-online"></div></div>`);
+
+        socket.on("message_edited", function (data) {
+            $("#t-" + data.id).text(data.content);
+        });
+
+        socket.on("message_deleted", function (data) {
+            $("#msg-" + data.id).remove();
+        });
+
+        socket.on("update_users", function (users) {
+            $("#member-list").html('<div class="member-title">ÇEVRİMİÇİ ÜYELER — ' + Object.keys(users).length + '</div>');
+            for (var username in users) {
+                $("#member-list").append(
+                    '<div class="member-item">' +
+                        '<img src="' + escapeHtml(users[username].avatar) + '" alt="Üye">' +
+                        '<span class="member-name">' + escapeHtml(users[username].name) + '</span>' +
+                        '<div class="status-online"></div>' +
+                    '</div>'
+                );
             }
         });
-        socket.on('display_typing', d => { $('#typing-box').text(d.status ? d.user + ' yazıyor...' : ''); });
-        if ('Notification' in window && Notification.permission === 'granted') {
-            $('#notify-btn').text('Bildirimler Acik');
+
+        socket.on("display_typing", function (data) {
+            $("#typing-box").text(data.status ? data.user + " yazıyor..." : "");
+        });
+
+        if ("Notification" in window && Notification.permission === "granted") {
+            $("#notify-btn").text("Bildirimler Açık");
         }
     </script>
 </body>
