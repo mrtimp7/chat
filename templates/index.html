@@ -110,6 +110,9 @@
         var lastMyId = null;
         var notificationIcon = "/static/icons/icon-192.svg";
         var deferredInstallPrompt = null;
+        var notificationBatch = [];
+        var notificationTimer = null;
+        var notificationWindowMs = 3500;
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js');
@@ -152,6 +155,74 @@
             }
         }
 
+        function playNotificationSound() {
+            try {
+                let AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+
+                let audioContext = new AudioCtx();
+                let oscillator = audioContext.createOscillator();
+                let gainNode = audioContext.createGain();
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.0001, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.12, audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.35);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.35);
+
+                oscillator.onended = function() {
+                    audioContext.close();
+                };
+            } catch (e) {}
+        }
+
+        async function flushDesktopNotifications() {
+            if (!notificationBatch.length) return;
+
+            let count = notificationBatch.length;
+            let latest = notificationBatch[notificationBatch.length - 1];
+            let body = latest.body;
+
+            if (count > 1) {
+                body += ' (x' + count + ')';
+            }
+
+            playNotificationSound();
+
+            try {
+                let registration = await navigator.serviceWorker.getRegistration();
+                if (registration) {
+                    await registration.showNotification(latest.title, {
+                        body: body,
+                        icon: notificationIcon,
+                        badge: notificationIcon,
+                        tag: 'mertcord-grouped-message',
+                        renotify: true
+                    });
+                    notificationBatch = [];
+                    return;
+                }
+            } catch (e) {}
+
+            let notification = new Notification(latest.title, {
+                body: body,
+                icon: notificationIcon,
+                tag: 'mertcord-grouped-message'
+            });
+
+            notification.onclick = function() {
+                window.focus();
+                notification.close();
+            };
+
+            notificationBatch = [];
+        }
+
         async function showDesktopNotification(data) {
             if (!('Notification' in window) || Notification.permission !== 'granted') return;
             if (document.visibilityState === 'visible' && document.hasFocus()) return;
@@ -161,32 +232,19 @@
                 ? data.content
                 : (data.caption || (data.type === 'image' ? 'Bir fotograf gonderdi.' : 'Bir video gonderdi.'));
 
-            try {
-                let registration = await navigator.serviceWorker.getRegistration();
-                if (registration && navigator.serviceWorker.controller) {
-                    navigator.serviceWorker.controller.postMessage({
-                        type: 'SHOW_NOTIFICATION',
-                        payload: {
-                            title: data.user + ' yeni mesaj gonderdi',
-                            body: body,
-                            icon: notificationIcon,
-                            tag: 'msg-' + data.id
-                        }
-                    });
-                    return;
-                }
-            } catch (e) {}
-
-            let notification = new Notification(data.user + ' yeni mesaj gonderdi', {
-                body: body,
-                icon: notificationIcon,
-                tag: 'msg-' + data.id
+            notificationBatch.push({
+                title: data.user + ' yeni mesaj gonderdi',
+                body: body
             });
 
-            notification.onclick = function() {
-                window.focus();
-                notification.close();
-            };
+            if (notificationTimer) {
+                clearTimeout(notificationTimer);
+            }
+
+            notificationTimer = setTimeout(() => {
+                flushDesktopNotifications();
+                notificationTimer = null;
+            }, notificationWindowMs);
         }
 
         $('#notify-btn').on('click', requestDesktopNotifications);
