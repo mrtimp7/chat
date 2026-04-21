@@ -26,7 +26,8 @@ class Message(db.Model):
     avatar = db.Column(db.String(500))
     content = db.Column(db.Text)
     caption = db.Column(db.Text)
-    msg_type = db.Column(db.String(10))
+    msg_type = db.Column(db.String(10)) # text, image, video
+    reply_to = db.Column(db.Text) # "User: Mesaj" formatında
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
@@ -37,6 +38,7 @@ def index():
     if 'username' in session:
         user = User.query.filter_by(username=session['username']).first()
         if not user: return redirect(url_for('logout'))
+        # 14 günlük temizlik
         limit = datetime.utcnow() - timedelta(days=14)
         Message.query.filter(Message.timestamp < limit).delete()
         db.session.commit()
@@ -113,14 +115,24 @@ def handle_message(data):
             avatar=user.avatar,
             content=data['content'],
             caption=data.get('caption', ''),
-            msg_type=data.get('type', 'text')
+            msg_type=data.get('type', 'text'),
+            reply_to=data.get('reply_to')
         )
         db.session.add(new_msg)
         db.session.commit()
         emit('message', {
             'id': new_msg.id, 'user': new_msg.user, 'content': new_msg.content,
-            'caption': new_msg.caption, 'avatar': new_msg.avatar, 'type': new_msg.msg_type
+            'caption': new_msg.caption, 'avatar': new_msg.avatar, 
+            'type': new_msg.msg_type, 'reply_to': new_msg.reply_to
         }, broadcast=True)
+
+@socketio.on('edit_message')
+def handle_edit(data):
+    msg = Message.query.get(data['id'])
+    if msg and msg.user.lower() == session.get('username').lower():
+        msg.content = data['content']
+        db.session.commit()
+        emit('message_edited', {'id': data['id'], 'content': data['content']}, broadcast=True)
 
 @socketio.on('delete_message')
 def handle_delete(data):
