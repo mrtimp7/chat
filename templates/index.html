@@ -1,13 +1,51 @@
-<script>
-    var socket = io();
-    socket.on('message', function(msg) {
-        $('#messages').append($('<li>').text(msg));
-    });
-    $('#sendButton').on('click', function() {
-        var text = $('#myMessage').val();
-        if(text.trim() !== "") {
-            socket.send(text);
-            $('#myMessage').val('');
-        }
-    });
-</script>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mert-Arda-Samet Chat</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: white; padding: 20px; }
+        #messages { list-style-type: none; padding: 0; height: 300px; overflow-y: scroll; border: 1px solid #333; margin-bottom: 10px; background: #1e1e1e; }
+        #messages li { padding: 8px; border-bottom: 1px solid #333; }
+        input { padding: 10px; width: 70%; background: #333; color: white; border: none; }
+        button { padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h3>Hoş geldin, {{ username }}</h3>
+    <ul id="messages"></ul>
+    <input id="myMessage" type="text" placeholder="Mesaj yaz..." autocomplete="off">
+    <button id="sendButton">Gönder</button>
+
+    <script>
+        // Hatanın çözümü burada: io() fonksiyonunun tanımlı olduğundan emin oluyoruz
+        var socket = io();
+
+        socket.on('connect', function() {
+            console.log("Bağlantı başarılı!");
+        });
+
+        socket.on('message', function(msg) {
+            $('#messages').append($('<li>').text(msg));
+            // Otomatik aşağı kaydır
+            $("#messages").scrollTop($("#messages")[0].scrollHeight);
+        });
+
+        $('#sendButton').on('click', function() {
+            var text = $('#myMessage').val();
+            if(text.trim() !== "") {
+                socket.send(text);
+                $('#myMessage').val('');
+            }
+        });
+
+        // Enter tuşuyla gönderme
+        $('#myMessage').on('keypress', function(e) {
+            if(e.which == 13) {
+                $('#sendButton').click();
+            }
+        });
+    </script>
+</body>
+</html>
