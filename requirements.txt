@@ -2,4 +2,5 @@ flask
 flask-socketio
 flask-sqlalchemy
 eventlet
+gunicorn
 werkzeug
